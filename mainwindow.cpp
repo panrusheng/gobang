@@ -156,12 +156,12 @@ int MainWindow::is_win(){
             }
             if(line.contains(black_win)){
                 stat = 1;
-                left_right = true;
+                up_down = true;
                 continue;
             }
             else if(line.contains(white_win)){
                 stat = -1;
-                left_right = true;
+                up_down = true;
                 continue;
             }
         }
@@ -178,12 +178,12 @@ int MainWindow::is_win(){
             }
             if(line.contains(black_win)){
                 stat = 1;
-                leftDown_rightUp = true;
+                leftUp_rightDown = true;
                 continue;
             }
             else if(line.contains(white_win)){
                 stat = -1;
-                leftDown_rightUp = true;
+                leftUp_rightDown = true;
                 continue;
             }
 
@@ -196,12 +196,12 @@ int MainWindow::is_win(){
             }
             if(line.contains(black_win)){
                 stat = 1;
-                leftDown_rightUp = true;
+                leftUp_rightDown = true;
                 continue;
             }
             else if(line.contains(white_win)){
                 stat = -1;
-                leftDown_rightUp = true;
+                leftUp_rightDown = true;
                 continue;
             }
         }
