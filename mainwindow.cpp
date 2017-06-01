@@ -106,11 +106,11 @@ void MainWindow::mousePressEvent(QMouseEvent *mouseEvent)
         this->update();      //update the window
     }
     if(is_win() ==1){
-        QMessageBox::information(NULL, "Game Over", "Black Win!", QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        QMessageBox::information(NULL, "Game Over", "Black Win!", QMessageBox::Yes, QMessageBox::Yes);
         this->close();
     }
     else if(is_win()==-1){
-        QMessageBox::information(NULL, "Game Over", "White Win!", QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        QMessageBox::information(NULL, "Game Over", "White Win!", QMessageBox::Yes, QMessageBox::Yes);
         this->close();
     }
 }
