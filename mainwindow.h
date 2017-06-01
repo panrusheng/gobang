@@ -24,9 +24,7 @@ public:
     ~MainWindow();
     void paintEvent(QPaintEvent *);
     void mousePressEvent(QMouseEvent *mouseEvent);
-//    void checkWin(int x,int y);
-//    void winShow(int colorCenter);
-//    void tie();
+    int is_win();//Implementing method: searching the substring
 
 
 private:

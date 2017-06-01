@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QString>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow){
     ui->setupUi(this);
@@ -104,5 +105,148 @@ void MainWindow::mousePressEvent(QMouseEvent *mouseEvent)
         this->chessBoard[int((x-X)*1.0/CHECK_WIDTH+0.5)][int((y-Y)*1.0/CHECK_WIDTH+0.5)] = (this->chessCounts%2 == 1)?1:-1;
         this->update();      //update the window
     }
+    if(is_win() ==1){
+        QMessageBox::information(NULL, "Game Over", "Black Win!", QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        this->close();
+    }
+    else if(is_win()==-1){
+        QMessageBox::information(NULL, "Game Over", "White Win!", QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        this->close();
+    }
+}
+int MainWindow::is_win(){
+    int stat = 0;//0: not ended; 1: black win; -1: white win;
+    const QString black_win("11111");
+    const QString white_win("00000");
+    QString line;//-- or | or \ or /
+    const int len = 15;
+    bool left_right = false;
+    bool up_down = false;
+    bool leftUp_rightDown = false;
+    bool leftDown_rightUp = false;
+    //  left-right
+    for(int i = 0;i<len;i++){
+        for(int j=0;j<len;j++){
+            switch(chessBoard[j][i]){
+            case 1:line[j]='1';break;
+            case 0:line[j]='2';break;
+            case -1:line[j]='0';break;
+            }
+        }
+        if(line.contains(black_win)){
+            stat = 1;
+            left_right = true;
+            continue;
+        }
+        else if(line.contains(white_win)){
+            stat = -1;
+            left_right = true;
+            continue;
+        }
+    }
+    //  up-down
+    if(!left_right){
+        for(int i = 0;i<len;i++){
+            for(int j=0;j<len;j++){
+                switch(chessBoard[i][j]){
+                case 1:line[j]='1';break;
+                case 0:line[j]='2';break;
+                case -1:line[j]='0';break;
+                }
+            }
+            if(line.contains(black_win)){
+                stat = 1;
+                left_right = true;
+                continue;
+            }
+            else if(line.contains(white_win)){
+                stat = -1;
+                left_right = true;
+                continue;
+            }
+        }
+    }
+    //  leftUp-rightDown
+    if((!left_right)||(!up_down)){
+        for(int i = 4;i<len;i++){
+            for(int j = 0;j<i+1;j++){
+                switch(chessBoard[len-(i-j)][j]){
+                case 1:line[j]='1';break;
+                case 0:line[j]='2';break;
+                case -1:line[j]='0';break;
+                }
+            }
+            if(line.contains(black_win)){
+                stat = 1;
+                leftDown_rightUp = true;
+                continue;
+            }
+            else if(line.contains(white_win)){
+                stat = -1;
+                leftDown_rightUp = true;
+                continue;
+            }
+
+            for(int j = 0;j<i+1;j++){
+                switch(chessBoard[i-j][len-j]){
+                case 1:line[j]='1';break;
+                case 0:line[j]='2';break;
+                case -1:line[j]='0';break;
+                }
+            }
+            if(line.contains(black_win)){
+                stat = 1;
+                leftDown_rightUp = true;
+                continue;
+            }
+            else if(line.contains(white_win)){
+                stat = -1;
+                leftDown_rightUp = true;
+                continue;
+            }
+        }
+    }
+
+    //  leftDown-rightUp
+    if((!left_right)||(!up_down)||(!leftUp_rightDown)){
+        for(int i = 4;i<len;i++){
+            for(int j = 0;j<i+1;j++){
+                switch(chessBoard[i-j][j]){
+                case 1:line[j]='1';break;
+                case 0:line[j]='2';break;
+                case -1:line[j]='0';break;
+                }
+            }
+            if(line.contains(black_win)){
+                stat = 1;
+                leftDown_rightUp = true;
+                continue;
+            }
+            else if(line.contains(white_win)){
+                stat = -1;
+                leftDown_rightUp = true;
+                continue;
+            }
+
+            for(int j = 0;j<i+1;j++){
+                switch(chessBoard[len-(i-j)][len-j]){
+                case 1:line[j]='1';break;
+                case 0:line[j]='2';break;
+                case -1:line[j]='0';break;
+                }
+            }
+            if(line.contains(black_win)){
+                stat = 1;
+                leftDown_rightUp = true;
+                continue;
+            }
+            else if(line.contains(white_win)){
+                stat = -1;
+                leftDown_rightUp = true;
+                continue;
+            }
+        }
+    }
+    return stat;
 }
 
