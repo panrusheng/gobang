@@ -614,8 +614,9 @@ int Utility(MatchState& current_state)
                 else
                     utility_num += -10;
             }
+            //如果立刻可以赢了是最好的策略
             else if (cnt >= 5)
-                utility_num += 5 * current_state.state[i][j];
+                return  100 * current_state.state[i][j];
 
             //竖直方向检测
             cnt = 1;
@@ -660,7 +661,7 @@ int Utility(MatchState& current_state)
                     utility_num += -10;
             }
             else if (cnt >= 5)
-                utility_num += 5 * current_state.state[i][j];
+                return 100 * current_state.state[i][j];
 
             //对角线方向检测
             cnt = 1;
@@ -713,7 +714,7 @@ int Utility(MatchState& current_state)
                     utility_num += -10;
             }
             else if (cnt >= 5)
-                utility_num += 5 * current_state.state[i][j];
+                return  100 * current_state.state[i][j];
 
             cnt = 1;
             zero1 = 0;
@@ -765,13 +766,14 @@ int Utility(MatchState& current_state)
                     utility_num += -10;
             }
             else if (cnt >= 5)
-                utility_num += 5 * current_state.state[i][j];
+                return  100 * current_state.state[i][j];
         }
     }
     if (utility_num != 0)
         return utility_num;
     return -1;
 }
+
 
 int Max_Value(MatchState& current_state, int depth, int alpha, int beta)
 {
@@ -836,18 +838,28 @@ int guarantee(const MatchState& current_state, int& r, int& c)
         for (j = 0; j < 15; j++)
         {
             //水平方向检测
-            int cnt = 1;
+            int cnt1 = 1;
+            int cnt2 = 0;
+            int cnt3 = 0;
             int row1 = 0;
             int col1 = 0;
             int row2 = 0;
             int col2 = 0;
+            int row3 = 0;
+            int col3 = 0;
+            int row4 = 0;
+            int col4 = 0;
             int zero1 = 0;
             int zero2 = 0;
-            if (current_state.state[i][j] == 0)
-                continue;
+            int zero3 = 0;
+            int zero4 = 0;
+            int zero5 = 0;
+            int zero6 = 0;
+            //if (current_state.state[i][j] == 0)
+            //	continue;
             for (int k = j - 1; k >= 0; k--)
             {
-                if (current_state.state[i][k] != current_state.state[i][j])
+                if (current_state.state[i][k] != current_state.state[i][j] && current_state.state[i][j] != 0)
                 {
                     if (current_state.state[i][k] == 0)
                     {
@@ -858,11 +870,81 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     break;
                 }
                 else
-                    cnt++;
+                    cnt1++;
+            }
+
+            for (int k = j - 1; k >= 0; k--)
+            {
+                if (current_state.state[i][k] == 1 && current_state.state[i][j] == 0)
+                {
+                    cnt2++;
+                }
+                else
+                {
+                    if (current_state.state[i][k] == 0)
+                    {
+                        row3 = i;
+                        col3 = j;
+                        zero3 = 1;
+                    }
+                    break;
+                }
+            }
+            for (int k = j - 1; k >= 0; k--)
+            {
+                if (current_state.state[i][k] == -1 && current_state.state[i][j] == 0)
+                {
+                    cnt3++;
+                }
+                else
+                {
+                    if (current_state.state[i][k] == 0)
+                    {
+                        row4 = i;
+                        col4 = j;
+                        zero5 = 1;
+                    }
+                    break;
+                }
+            }
+
+            for (int k = j + 1; k < 15; k++)
+            {
+                if (current_state.state[i][k] == 1 && current_state.state[i][j] == 0)
+                {
+                    cnt2++;
+                }
+                else
+                {
+                    if (current_state.state[i][k] == 0)
+                    {
+                        row3 = i;
+                        col3 = j;
+                        zero4 = 1;
+                    }
+                    break;
+                }
             }
             for (int k = j + 1; k < 15; k++)
             {
-                if (current_state.state[i][k] != current_state.state[i][j])
+                if (current_state.state[i][k] == -1 && current_state.state[i][j] == 0)
+                {
+                    cnt3++;
+                }
+                else
+                {
+                    if (current_state.state[i][k] == 0)
+                    {
+                        row4 = i;
+                        col4 = j;
+                        zero6 = 1;
+                    }
+                    break;
+                }
+            }
+            for (int k = j + 1; k < 15; k++)
+            {
+                if (current_state.state[i][k] != current_state.state[i][j] && current_state.state[i][j] != 0)
                 {
                     if (current_state.state[i][k] == 0)
                     {
@@ -873,33 +955,42 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     break;
                 }
                 else
-                    cnt++;
+                    cnt1++;
             }
             //如果发现有冲四的现象，那么就必须拦截
-            if (cnt == 4 && (zero1 && zero2))
+            if (cnt1 == 4 && (zero1 && zero2))
             {
+                if (current_state.state[i][j] == 1)
+                    priority = 10;
+                else
+                    priority = 5;
                 r = row1;
                 c = col1;
-                priority = 5;
             }
             //虽然没有冲四，但是也不能够置之不理的情境
-            else if (cnt == 4 && (zero1 || zero2))
+            else if (cnt1 == 4 && (zero1 || zero2))
             {
                 if (zero1 == 1)
                 {
+                    if (current_state.state[i][j] == 1)
+                        priority = 10;
+                    else
+                        priority = 5;
                     r = row1;
                     c = col1;
-                    priority = 5;
                 }
                 else
                 {
+                    if (current_state.state[i][j] == 1)
+                        priority = 10;
+                    else
+                        priority = 5;
                     r = row2;
                     c = col2;
-                    priority = 5;
                 }
             }
             //出现双三的情况
-            else if (cnt == 3 && (zero1 && zero2))
+            else if (cnt1 == 3 && (zero1 && zero2))
             {
                 r = row1;
                 c = col1;
@@ -909,18 +1000,53 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                 else
                     priority = 3;
             }
+            else if (cnt2 == 4)
+            {
+                r = row3;
+                c = col3;
+                priority = 10;
+            }
+            else if (cnt2 == 3 && (zero3 && zero4))
+            {
+                r = row3;
+                c = col3;
+                priority = 4;
+            }
+            else if (cnt3 == 4)
+            {
+                r = row4;
+                c = col4;
+                priority = 5;
+            }
+            else if (cnt3 == 3 && (zero5 && zero6))
+            {
+                r = row4;
+                c = col4;
+                priority = 4;
+            }
+
 
             //竖直方向检测
-            cnt = 1;
+            cnt1 = 1;
+            cnt2 = 0;
+            cnt3 = 0;
             row1 = 0;
             col1 = 0;
             row2 = 0;
             col2 = 0;
+            row3 = 0;
+            col3 = 0;
+            row4 = 0;
+            col4 = 0;
             zero1 = 0;
             zero2 = 0;
+            zero3 = 0;
+            zero4 = 0;
+            zero5 = 0;
+            zero6 = 0;
             for (int k = i - 1; k >= 0; k--)
             {
-                if (current_state.state[k][j] != current_state.state[i][j])
+                if (current_state.state[k][j] != current_state.state[i][j] && current_state.state[i][j] != 0)
                 {
                     if (current_state.state[k][j] == 0)
                     {
@@ -931,11 +1057,80 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     break;
                 }
                 else
-                    cnt++;
+                    cnt1++;
+            }
+            for (int k = i - 1; k >= 0; k--)
+            {
+                if (current_state.state[k][j] == 1 && current_state.state[i][j] == 0)
+                {
+                    cnt2++;
+                }
+                else
+                {
+                    if (current_state.state[k][j] == 0)
+                    {
+                        row3 = i;
+                        col3 = j;
+                        zero3 = 1;
+                    }
+                    break;
+                }
+            }
+            for (int k = i - 1; k >= 0; k--)
+            {
+                if (current_state.state[k][j] == -1 && current_state.state[i][j] == 0)
+                {
+                    cnt3++;
+                }
+                else
+                {
+                    if (current_state.state[k][j] == 0)
+                    {
+                        row4 = i;
+                        col4 = j;
+                        zero5 = 1;
+                    }
+                    break;
+                }
+            }
+
+            for (int k = i + 1; k < 15; k++)
+            {
+                if (current_state.state[k][j] == 1 && current_state.state[i][j] == 0)
+                {
+                    cnt2++;
+                }
+                else
+                {
+                    if (current_state.state[k][j] == 0)
+                    {
+                        row3 = i;
+                        col3 = j;
+                        zero4 = 1;
+                    }
+                    break;
+                }
+            }
+            for (int k = i + 1; k < 15; k++)
+            {
+                if (current_state.state[k][j] == -1 && current_state.state[i][j] == 0)
+                {
+                    cnt3++;
+                }
+                else
+                {
+                    if (current_state.state[k][j] == 0)
+                    {
+                        row4 = i;
+                        col4 = j;
+                        zero6 = 1;
+                    }
+                    break;
+                }
             }
             for (int k = i + 1; k <= 15; k++)
             {
-                if (current_state.state[k][j] != current_state.state[i][j])
+                if (current_state.state[k][j] != current_state.state[i][j] && current_state.state[i][j] != 0)
                 {
                     if (current_state.state[k][j] == 0)
                     {
@@ -946,65 +1141,100 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     break;
                 }
                 else
-                    cnt++;
+                    cnt1++;
             }
-            if (cnt == 4 && (zero1 && zero2))
-            {
-                if (priority < 5)
-                {
-                    r = row1;
-                    c = col1;
-                    priority = 5;
-                }
-            }
-            else if (cnt == 4 && (zero1 || zero2))
-            {
-                if (priority < 5)
-                {
-                    if (zero1 == 1)
-                    {
-                        r = row1;
-                        c = col1;
-                        priority = 5;
-                    }
-                    else
-                    {
-                        r = row2;
-                        c = col2;
-                        priority = 5;
-                    }
-                }
-            }
-            else if (cnt == 3 && (zero1 && zero2))
+            //如果发现有冲四的现象，那么就必须拦截
+            if (cnt1 == 4 && (zero1 && zero2))
             {
                 if (current_state.state[i][j] == 1)
+                    priority = 10;
+                else
+                    priority = 5;
+                r = row1;
+                c = col1;
+            }
+            //虽然没有冲四，但是也不能够置之不理的情境
+            else if (cnt1 == 4 && (zero1 || zero2))
+            {
+                if (zero1 == 1)
                 {
+                    if (current_state.state[i][j] == 1)
+                        priority = 10;
+                    else
+                        priority = 5;
                     r = row1;
                     c = col1;
+                }
+                else
+                {
+                    if (current_state.state[i][j] == 1)
+                        priority = 10;
+                    else
+                        priority = 5;
+                    r = row2;
+                    c = col2;
+                }
+            }
+            //出现双三的情况
+            else if (cnt1 == 3 && (zero1 && zero2))
+            {
+                r = row1;
+                c = col1;
+                //如果是自己的双三情况出现，应该首先攻占，优先度高一点
+                if (current_state.state[i][j] == 1)
                     priority = 4;
-                }
-                else if (priority <= 3)
-                {
-                    r = row1;
-                    c = col1;
+                else
                     priority = 3;
-                }
+            }
+            else if (cnt2 == 4)
+            {
+                r = row3;
+                c = col3;
+                priority = 10;
+            }
+            else if (cnt2 == 3 && (zero3 && zero4))
+            {
+                r = row3;
+                c = col3;
+                priority = 4;
+            }
+            else if (cnt3 == 4)
+            {
+                r = row4;
+                c = col4;
+                priority = 5;
+            }
+            else if (cnt3 == 3 && (zero5 && zero6))
+            {
+                r = row4;
+                c = col4;
+                priority = 4;
             }
 
             //对角线方向检测
-            cnt = 1;
+            cnt1 = 1;
+            cnt2 = 0;
+            cnt3 = 0;
             row1 = 0;
             col1 = 0;
             row2 = 0;
             col2 = 0;
+            row3 = 0;
+            col3 = 0;
+            row4 = 0;
+            col4 = 0;
             zero1 = 0;
             zero2 = 0;
+            zero3 = 0;
+            zero4 = 0;
+            zero5 = 0;
+            zero6 = 0;
             int m = i + 1;
             for (int k = j - 1; k >= 0; k--)
             {
                 if (m >= 15)
                     break;
-                if (current_state.state[m][k] != current_state.state[i][j])
+                if (current_state.state[m][k] != current_state.state[i][j] && current_state.state[i][j] != 0)
                 {
                     if (current_state.state[m][k] == 0)
                     {
@@ -1015,15 +1245,101 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     break;
                 }
                 else
-                    cnt++;
+                    cnt1++;
                 m++;
+            }
+            m = i + 1;
+            for (int k = j - 1; k >= 0; k--)
+            {
+                if (m >= 15)
+                    break;
+                if (current_state.state[m][k] == 1 && current_state.state[i][j] == 0)
+                {
+                    cnt2++;
+                }
+                else
+                {
+                    if (current_state.state[m][k] == 0)
+                    {
+                        row3 = i;
+                        col3 = j;
+                        zero3 = 1;
+                    }
+                    break;
+                }
+                m++;
+            }
+            m = i + 1;
+            for (int k = j - 1; k >= 0; k--)
+            {
+                if (m >= 15)
+                    break;
+                if (current_state.state[m][k] == -1 && current_state.state[i][j] == 0)
+                {
+                    cnt3++;
+                }
+                else
+                {
+                    if (current_state.state[m][k] == 0)
+                    {
+                        row4 = i;
+                        col4 = j;
+                        zero5 = 1;
+                    }
+                    break;
+                }
+                m++;
+            }
+
+            m = i - 1;
+            for (int k = j + 1; k < 15; k++)
+            {
+                if (m < 0)
+                    break;
+                if (current_state.state[m][k] == 1 && current_state.state[i][j] == 0)
+                {
+                    cnt2++;
+                }
+                else
+                {
+                    if (current_state.state[m][k] == 0)
+                    {
+                        row3 = i;
+                        col3 = j;
+                        zero4 = 1;
+                    }
+                    break;
+                }
+                m--;
             }
             m = i - 1;
             for (int k = j + 1; k < 15; k++)
             {
                 if (m < 0)
                     break;
-                if (current_state.state[m][k] != current_state.state[i][j])
+                if (current_state.state[m][k] == -1 && current_state.state[i][j] == 0)
+                {
+                    cnt3++;
+                }
+                else
+                {
+                    if (current_state.state[m][k] == 0)
+                    {
+                        row4 = i;
+                        col4 = j;
+                        zero6 = 1;
+                    }
+                    break;
+                }
+                m--;
+            }
+
+            m = i - 1;
+            for (int k = j + 1; k < 15; k++)
+            {
+                if (m < 0)
+                    break;
+                if (current_state.state[m][k] != current_state.state[i][j] && current_state.state[i][j] != 0)
                 {
                     if (current_state.state[m][k] == 0)
                     {
@@ -1034,59 +1350,95 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     break;
                 }
                 else
-                    cnt++;
+                    cnt1++;
                 m--;
             }
-            if (cnt == 4 && (zero1 && zero2))
-            {
-                if (priority < 5)
-                {
-                    r = row1;
-                    c = col1;
-                    priority = 5;
-                }
-            }
-            else if (cnt == 4 && (zero1 || zero2))
-            {
-                if (priority < 5)
-                {
-                    if (zero1 == 1)
-                    {
-                        r = row1;
-                        c = col1;
-                        priority = 5;
-                    }
-                    else
-                    {
-                        r = row2;
-                        c = col2;
-                        priority = 5;
-                    }
-                }
-            }
-            else if (cnt == 3 && (zero1 && zero2))
+
+            //如果发现有冲四的现象，那么就必须拦截
+            if (cnt1 == 4 && (zero1 && zero2))
             {
                 if (current_state.state[i][j] == 1)
+                    priority = 10;
+                else
+                    priority = 5;
+                r = row1;
+                c = col1;
+            }
+            //虽然没有冲四，但是也不能够置之不理的情境
+            else if (cnt1 == 4 && (zero1 || zero2))
+            {
+                if (zero1 == 1)
                 {
+                    if (current_state.state[i][j] == 1)
+                        priority = 10;
+                    else
+                        priority = 5;
                     r = row1;
                     c = col1;
-                    priority = 4;
                 }
-                else if (priority <= 3)
+                else
                 {
-                    r = row1;
-                    c = col1;
-                    priority = 3;
+                    if (current_state.state[i][j] == 1)
+                        priority = 10;
+                    else
+                        priority = 5;
+                    r = row2;
+                    c = col2;
                 }
             }
+            //出现双三的情况
+            else if (cnt1 == 3 && (zero1 && zero2))
+            {
+                r = row1;
+                c = col1;
+                //如果是自己的双三情况出现，应该首先攻占，优先度高一点
+                if (current_state.state[i][j] == 1)
+                    priority = 4;
+                else
+                    priority = 3;
+            }
+            else if (cnt2 == 4)
+            {
+                r = row3;
+                c = col3;
+                priority = 10;
+            }
+            else if (cnt2 == 3 && (zero3 && zero4))
+            {
+                r = row3;
+                c = col3;
+                priority = 4;
+            }
+            else if (cnt3 == 4)
+            {
+                r = row4;
+                c = col4;
+                priority = 5;
+            }
+            else if (cnt3 == 3 && (zero5 && zero6))
+            {
+                r = row4;
+                c = col4;
+                priority = 4;
+            }
 
-            cnt = 1;
+            cnt1 = 1;
+            cnt2 = 0;
+            cnt3 = 0;
             row1 = 0;
             col1 = 0;
             row2 = 0;
             col2 = 0;
+            row3 = 0;
+            col3 = 0;
+            row4 = 0;
+            col4 = 0;
             zero1 = 0;
             zero2 = 0;
+            zero3 = 0;
+            zero4 = 0;
+            zero5 = 0;
+            zero6 = 0;
             m = i - 1;
             for (int k = j - 1; k >= 0; k--)
             {
@@ -1103,9 +1455,96 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     break;
                 }
                 else
-                    cnt++;
+                    cnt1++;
                 m--;
             }
+
+            m = i - 1;
+            for (int k = j - 1; k >= 0; k--)
+            {
+                if (m < 0)
+                    break;
+                if (current_state.state[m][k] == 1 && current_state.state[i][j] == 0)
+                {
+                    cnt2++;
+                }
+                else
+                {
+                    if (current_state.state[m][k] == 0)
+                    {
+                        row3 = i;
+                        col3 = j;
+                        zero3 = 1;
+                    }
+                    break;
+                }
+                m--;
+            }
+            m = i - 1;
+            for (int k = j - 1; k >= 0; k--)
+            {
+                if (m < 0)
+                    break;
+                if (current_state.state[m][k] == -1 && current_state.state[i][j] == 0)
+                {
+                    cnt3++;
+                }
+                else
+                {
+                    if (current_state.state[m][k] == 0)
+                    {
+                        row4 = i;
+                        col4 = j;
+                        zero5 = 1;
+                    }
+                    break;
+                }
+                m--;
+            }
+
+            m = i + 1;
+            for (int k = j + 1; k < 15; k++)
+            {
+                if (m >= 15)
+                    break;
+                if (current_state.state[m][k] == 1 && current_state.state[i][j] == 0)
+                {
+                    cnt2++;
+                }
+                else
+                {
+                    if (current_state.state[m][k] == 0)
+                    {
+                        row3 = i;
+                        col3 = j;
+                        zero4 = 1;
+                    }
+                    break;
+                }
+                m++;
+            }
+            m = i + 1;
+            for (int k = j + 1; k < 15; k++)
+            {
+                if (m >= 15)
+                    break;
+                if (current_state.state[m][k] == -1 && current_state.state[i][j] == 0)
+                {
+                    cnt3++;
+                }
+                else
+                {
+                    if (current_state.state[m][k] == 0)
+                    {
+                        row4 = i;
+                        col4 = j;
+                        zero6 = 1;
+                    }
+                    break;
+                }
+                m++;
+            }
+
             m = i + 1;
             for (int k = j + 1; k < 15; k++)
             {
@@ -1122,50 +1561,76 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     break;
                 }
                 else
-                    cnt++;
+                    cnt1++;
                 m++;
             }
-            if (cnt == 4 && (zero1 && zero2))
-            {
-                if (priority < 5)
-                {
-                    r = row1;
-                    c = col1;
-                    priority = 5;
-                }
-            }
-            else if (cnt == 4 && (zero1 || zero2))
-            {
-                if (priority < 5)
-                {
-                    if (zero1 == 1)
-                    {
-                        r = row1;
-                        c = col1;
-                        priority = 5;
-                    }
-                    else
-                    {
-                        r = row2;
-                        c = col2;
-                        priority = 5;
-                    }
-                }
-            }
-            else if (cnt == 3 && (zero1 && zero2))
+
+            //如果发现有冲四的现象，那么就必须拦截
+            if (cnt1 == 4 && (zero1 && zero2))
             {
                 if (current_state.state[i][j] == 1)
+                    priority = 10;
+                else
+                    priority = 5;
+                r = row1;
+                c = col1;
+            }
+            //虽然没有冲四，但是也不能够置之不理的情境
+            else if (cnt1 == 4 && (zero1 || zero2))
+            {
+                if (zero1 == 1)
                 {
+                    if (current_state.state[i][j] == 1)
+                        priority = 10;
+                    else
+                        priority = 5;
                     r = row1;
                     c = col1;
+                }
+                else
+                {
+                    if (current_state.state[i][j] == 1)
+                        priority = 10;
+                    else
+                        priority = 5;
+                    r = row2;
+                    c = col2;
+                }
+            }
+            //出现双三的情况
+            else if (cnt1 == 3 && (zero1 && zero2))
+            {
+                r = row1;
+                c = col1;
+                //如果是自己的双三情况出现，应该首先攻占，优先度高一点
+                if (current_state.state[i][j] == 1)
                     priority = 4;
-                }
-                else if (priority <= 3)
-                {
-                    r = row1;
-                    c = col1;
+                else
                     priority = 3;
-                }
+            }
+            else if (cnt2 == 4)
+            {
+                r = row3;
+                c = col3;
+                priority = 10;
+            }
+            else if (cnt2 == 3 && (zero3 && zero4))
+            {
+                r = row3;
+                c = col3;
+                priority = 4;
+            }
+            else if (cnt3 == 4)
+            {
+                r = row4;
+                c = col4;
+                priority = 5;
+            }
+            else if (cnt3 == 3 && (zero5 && zero6))
+            {
+                r = row4;
+                c = col4;
+                priority = 4;
             }
         }
     }
