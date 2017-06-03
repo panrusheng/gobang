@@ -8,6 +8,8 @@
 #include <QMouseEvent>
 #include <QDebug>
 #include <QMessageBox>
+#include <QString>
+#include <QVector>
 namespace Ui {
 class MainWindow;
 }
@@ -23,7 +25,8 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void paintEvent(QPaintEvent *);
-    void mousePressEvent(QMouseEvent *mouseEvent);
+    void mousePressEvent(QMouseEvent *mouseEvent);//player
+    void computer();
     int is_win();//Implementing method: searching the substring
 
 
@@ -35,5 +38,6 @@ private:
     int chessBoard[15][15];//Simulated chessboard; 1:Black,-1:White 0:None
     Ui::MainWindow *ui;
 };
+
 
 #endif // MAINWINDOW_H
