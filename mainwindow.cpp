@@ -55,7 +55,8 @@ void MainWindow::paintEvent(QPaintEvent *){
         int num = 1;
         char str[3],char_a[2]="A";
         for(short i = 0;i < 15;i++){
-            itoa(num++,str,10);
+            //itoa(num++,str,10);
+            sprintf(str, "%d", num++);
             paint.drawText(X*0.4,Y*1.1+i*CHECK_WIDTH,str);
             paint.drawText(X*0.95+i*CHECK_WIDTH,Y*0.6,char_a);
             char_a[0]++;
@@ -73,8 +74,10 @@ void MainWindow::paintEvent(QPaintEvent *){
     //chess pieces
     int radix = CHECK_WIDTH*0.9;
     QImage black_chess,white_chess;
-    black_chess.load("../Gobang/black.png");
-    white_chess.load("../Gobang/white.png");
+    //black_chess.load("../Gobang/black.png");
+    //white_chess.load("../Gobang/white.png");
+    black_chess.load(":/images/black");
+    white_chess.load(":/images/white");
     black_chess = black_chess.scaled(radix,radix,Qt::KeepAspectRatio);
     white_chess = white_chess.scaled(radix,radix,Qt::KeepAspectRatio);
     if(1){
