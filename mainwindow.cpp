@@ -1,39 +1,362 @@
+﻿#include <sstream>
+#include <string>
+#include <fstream>
+#include <iostream>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <ctime>
+#include <iomanip>
+using namespace std;
 
+#define LIMIT_TIME_MIN 5
+#define LIMIT_TIME_SEC 0
+
+int max_depth = 3;
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow){
     ui->setupUi(this);
-    setFixedSize(SIZE,SIZE);
+    // add menu
+    //QTimer *timer = new QTimer(this);
+    //connect(timer, SIGNAL(timeout()), this, SLOT(updateTimer1(QString)));
+    //connect(timer, SIGNAL(timeout()), this, SLOT(updateTimer2(QString)));
+    //timer->start(1000);
+
+    StatusSize = 200;
+    //QTextEdit *center = new QTextEdit(this);
+    //center->setReadOnly(true);
+    //center->setMinimumSize(SIZE, SIZE);
+    //setCentralWidget(center);
+    setWindowTitle("GoBang");
+    setFixedSize(SIZE + StatusSize, SIZE-Y*0.5);
     this->xPressed = 0;
     this->yPressed = 0;
     this->chessCounts = 0;
-    for(int i=0;i<15;i++)
-    {
-        for(int j=0;j<15;j++)
-        {
-            chessBoard[i][j] = 0;
-        }
-    }
+
+    for (int i = 0; i < 15; i++)
+        for (int j = 0; j < 15; j++)
+            chessboard[i][j] = 0;
+    game.getStatus(chessboard);
+    setupMenuBar();
+
+    ui->radioType->setChecked(true);
+    ui->radioType_2->setChecked(false);
+
+    timer = new QTimer();
+
+    timeValueComputer = new QTime(0, LIMIT_TIME_MIN, LIMIT_TIME_SEC);
+    timeValuePlayer = new QTime(0, LIMIT_TIME_MIN, LIMIT_TIME_SEC);
+
+    ui->lcdComputer->display(this->timeValueComputer->toString());
+    ui->lcdPlayer->display(this->timeValuePlayer->toString());
+
+    this->timer->start(1000);
+    connect(timer,SIGNAL(timeout()),this,SLOT(setDisplay()));
 }
+
+void MainWindow::setDisplay()
+{
+    //cout << chessCounts << endl;
+    if (this->chessCounts%2 == 0 && !is_win())
+        this->timeValuePlayer->setHMS(0, this->timeValuePlayer->addSecs(-1).minute(), this->timeValuePlayer->addSecs(-1).second());
+    else if (this->chessCounts%2 == 1 && !is_win())
+        this->timeValueComputer->setHMS(0, this->timeValueComputer->addSecs(-1).minute(), this->timeValueComputer->addSecs(-1).second());
+
+    ui->lcdComputer->display(this->timeValueComputer->toString());
+    ui->lcdPlayer->display(this->timeValuePlayer->toString());
+}
+
 
 MainWindow::~MainWindow(){
     delete ui;
 }
 
+void MainWindow::setupMenuBar(void)
+{
+    QMenuBar *MenuBar = new QMenuBar(this);
+
+    QMenu *GameMenu = new QMenu(tr("Game"), MenuBar);
+    QMenu *ModeMenu = new QMenu(tr("Mode"), MenuBar);
+    QMenu *AboutMenu = new QMenu(tr("About"), MenuBar);
+
+    QToolBar *GameToolBar = addToolBar(tr("New Game"));
+    /// set game menu
+    // add action
+    const QIcon newIcon = QIcon::fromTheme("document-new", QIcon(":/icon/new.png"));
+    QAction *newGame = new QAction(newIcon, tr("New Game"), GameMenu);
+
+    const QIcon openIcon = QIcon::fromTheme("document-open", QIcon(":/icon/open.png"));
+    QAction *openGame = new QAction(openIcon, tr("Open Game"), GameMenu);
+
+    const QIcon saveIcon = QIcon::fromTheme("document-save", QIcon(":/icon/save.png"));
+    QAction *saveGame = new QAction(saveIcon, tr("Save Game"), GameMenu);
+    QAction *quitGame = new QAction(tr("Quit Game"), GameMenu);
+    GameMenu->addAction(newGame);
+    GameMenu->addAction(openGame);
+    GameMenu->addAction(saveGame);
+    GameMenu->addAction(quitGame);
+
+    // add menu
+    MenuBar->addMenu(GameMenu);
+
+    // connect
+    connect(newGame, SIGNAL(triggered(bool)), this, SLOT(newGame()));
+    connect(openGame, SIGNAL(triggered(bool)), this, SLOT(openGame()));
+    connect(saveGame, SIGNAL(triggered(bool)), this, SLOT(saveGame()));
+    connect(quitGame, SIGNAL(triggered(bool)), this, SLOT(quitGame()));
+
+    // set game toolbar
+    GameToolBar->addAction(newGame);
+    GameToolBar->addAction(openGame);
+    GameToolBar->addAction(saveGame);
+
+    /// set mode menu
+    // add action
+    QAction *easyMode = new QAction("Easy", ModeMenu);
+    QAction *middleMode = new QAction("Middle", ModeMenu);
+    QAction *difficultMode = new QAction("Difficult", ModeMenu);
+    ModeMenu->addAction(easyMode);
+    ModeMenu->addAction(middleMode);
+    ModeMenu->addAction(difficultMode);
+
+    // add menu
+    MenuBar->addMenu(ModeMenu);
+
+    // connect
+    connect(easyMode, SIGNAL(triggered(bool)), this, SLOT(setEasyMode()));
+    connect(middleMode, SIGNAL(triggered(bool)), this, SLOT(setMiddleMode()));
+    connect(difficultMode, SIGNAL(triggered(bool)), this, SLOT(setDifficultMode()));
+
+    /// set about menu
+    // add action
+    QAction *aboutInfo = new QAction("About", AboutMenu);
+    AboutMenu->addAction(aboutInfo);
+    // add menu
+    MenuBar->addMenu(AboutMenu);
+    // connect
+    connect(aboutInfo, SIGNAL(triggered(bool)), this, SLOT(showAbout()));
+
+    // set menubar
+    setMenuBar(MenuBar);
+}
+
+void MainWindow::on_radioType_clicked()
+{
+    this->newGame();
+}
+
+void MainWindow::on_radioType_2_clicked()
+{
+    this->newGame();
+}
+
+
+
+void MainWindow::setupStatus()
+{
+    QDockWidget *dock = new QDockWidget(tr("Computer"), this);
+    dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    QDateTime time = QDateTime::currentDateTime();
+    QString str = time.toString("yyyy-MM-dd hh:mm:ss dddd");
+    QListWidget *infoComputer;
+    infoComputer = new QListWidget(dock);
+    infoComputer->addItems(QStringList()
+                       << "Time: "
+                       << str);
+    ui->timeComputer->setText(str);
+    dock->setWidget(infoComputer);
+    addDockWidget(Qt::RightDockWidgetArea, dock);
+
+    // player
+    dock = new QDockWidget(tr("Player"), this);
+    QListWidget *infoPlayer;
+
+    infoPlayer = new QListWidget(dock);
+    infoPlayer->addItems(QStringList()
+                         << "Time: "
+                         << str);
+    dock->setWidget(infoPlayer);
+    addDockWidget(Qt::RightDockWidgetArea, dock);
+    ui->timePlayer->setText(str);
+}
+
+void MainWindow::timeUpdate()
+{
+    //ui->timeComputer->setText();
+    //ui->timePlayer->setText();
+}
+
+void MainWindow::newGame(void)
+{
+    game.clear(); // clear the records
+    game.getStatus(chessboard);
+
+    this->timer = new QTimer();
+    this->timeValueComputer = new QTime(0, LIMIT_TIME_MIN, LIMIT_TIME_SEC);
+    this->timeValuePlayer = new QTime(0, LIMIT_TIME_MIN, LIMIT_TIME_SEC);
+    this->chessCounts = 0;
+
+    this->update();
+}
+
+void MainWindow::openGame(void)
+{
+    QString path = QFileDialog::getOpenFileName(this,
+                                                tr("Open Game"),
+                                                ".",
+                                                tr("Text Files(*.txt)"));
+    if (!path.isEmpty())
+    {
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)){
+            QMessageBox::warning(this,
+                                 tr("Read Game File"),
+                                 tr("Cannot open file:\n%1").arg(path));
+            return;
+        }
+        QTextStream in(&file);
+
+
+        QString qstr;
+        string str;
+        int tmp_i;
+        //qstr = in.readLine();
+        qstr = in.readAll();
+        str = qstr.toStdString();
+        istringstream iss(str);
+        cout << str << endl;
+        for (int j = 0; j < 15; j++)
+        {
+            for (int i = 0; i < 15; i++)
+            {
+                iss >> tmp_i;
+                cout << tmp_i << " ";
+                chessboard[i][j] = tmp_i;
+            }
+            cout << endl;
+        }
+        this->update();
+        //ss << in.readAll();
+        cout << str << endl;
+        file.close();
+
+    }
+    else
+    {
+        QMessageBox::warning(this,
+                             tr("Path"),
+                             tr("You have not select any file."));
+    }
+
+}
+
+void MainWindow::saveGame(void)
+{
+    string filename;
+    stringstream ss;
+    struct tm * timeinfo;
+    time_t rawtime;
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    ss << timeinfo->tm_year + 1900 ;
+
+    ss << setw(2) << setfill('0') << timeinfo->tm_mon + 1;
+    ss << setw(2) << setfill('0') << timeinfo->tm_mday;
+    ss << setw(2) << setfill('0') << timeinfo->tm_hour;
+    ss << setw(2) << setfill('0') << timeinfo->tm_min;
+    ss << setw(2) << setfill('0') << timeinfo->tm_sec;
+    filename = "gobang_" + ss.str() + ".txt";
+    cout << filename << endl;
+    cout <<  asctime(timeinfo) << endl;
+    QString path = QFileDialog::getSaveFileName(this,
+                                                tr("Open Game File"),
+                                                ".",
+                                                tr("Text Files(*.txt)"));
+    if (!path.isEmpty())
+    {
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            QMessageBox::warning(this,
+                                 tr("Save Game"),
+                                 tr("Cannot open file\n%1").arg(path));
+            return;
+        }
+        QTextStream out(&file);
+        for (int j = 0; j < 15; j++)
+        {
+            for (int i = 0; i < 15; i++)
+                out << chessboard[i][j] << " ";
+            out << endl;
+        }
+        file.close();
+    }
+    else
+    {
+        QMessageBox::warning(this,
+                             tr("Path"),
+                             tr("You did not select any file."));
+    }
+}
+
+void MainWindow::quitGame(void)
+{
+    this->close();
+}
+
+void MainWindow::setEasyMode()
+{
+    this->newGame();
+    max_depth = 1;
+}
+
+void MainWindow::setMiddleMode()
+{
+    this->newGame();
+    max_depth = 2;
+}
+
+void MainWindow::setDifficultMode()
+{
+    this->newGame();
+    max_depth = 3;
+}
+
+void MainWindow::showAbout()
+{
+    QMessageBox::information(NULL, "About", "CopyRight from 2017 OOP Project.", QMessageBox::Yes, QMessageBox::Yes);
+}
+
+void MainWindow::updateTimer1(const QString qstr)
+{
+    ui->timeComputer->clear();
+    ui->timeComputer->setText(qstr);
+    ui->lcdComputer->display(qstr);
+}
+
+void MainWindow::updateTimer2(const QString qstr)
+{
+    ui->timePlayer->clear();
+    ui->timePlayer->setText(qstr);
+    ui->lcdPlayer->display(qstr);
+}
+
 void MainWindow::paintEvent(QPaintEvent *){
+    // get the current status
+    //game.getStatus(chessboard);
+
     QPainter paint(this);
     paint.setRenderHint(QPainter::Antialiasing,true);
     //background
+    double factor = 0.73;
     paint.setPen(QPen(QColor::fromRgbF(1, 211.0/255.0, 0,0.7),2,Qt::SolidLine));
     paint.setBrush(QBrush(QColor::fromRgbF(1, 211.0/255.0, 0,0.7),Qt::SolidPattern));
-    paint.drawRect(0,0,SIZE,SIZE);
+    paint.drawRect(0,Y*factor,SIZE,SIZE-2*Y*factor);
     paint.setPen(QPen(QColor::fromRgbF(0,0,0,1),1,Qt::SolidLine));
-    double factor = 0.3;
-    paint.drawLine(X*factor,Y*factor,-X*factor+SIZE,Y*factor);
-    paint.drawLine(X*factor,-Y*factor+SIZE,-X*factor+SIZE,-Y*factor+SIZE);
-    paint.drawLine(X*factor,Y*factor,X*factor,-Y*factor+SIZE);
-    paint.drawLine(-X*factor+SIZE,Y*factor,-X*factor+SIZE,-Y*factor+SIZE);
+    paint.drawLine(0,Y*factor,SIZE,Y*factor);
+    paint.drawLine(0,-Y*factor+SIZE,SIZE,-Y*factor+SIZE);
+    paint.drawLine(0,Y*factor,0,-Y*factor+SIZE);
+    paint.drawLine(SIZE,Y*factor,SIZE,-Y*factor+SIZE);
     //horizonal line * (CHECK_NUM-1)
     paint.setPen(QPen(QColor::fromRgbF(0,0,0,0.7),2,Qt::SolidLine));
     for(int i=1;i<CHECK_NUM;i++){
@@ -55,9 +378,10 @@ void MainWindow::paintEvent(QPaintEvent *){
         int num = 1;
         char str[3],char_a[2]="A";
         for(short i = 0;i < 15;i++){
-            itoa(num++,str,10);
-            paint.drawText(X*0.4,Y*1.1+i*CHECK_WIDTH,str);
-            paint.drawText(X*0.95+i*CHECK_WIDTH,Y*0.6,char_a);
+            //itoa(num++,str,10);
+            sprintf(str, "%d", num++);
+            paint.drawText(X*0.78,Y*1.1+i*CHECK_WIDTH,str);
+            paint.drawText(X*0.95+i*CHECK_WIDTH,Y*0.9,char_a);
             char_a[0]++;
         }
     }
@@ -73,8 +397,10 @@ void MainWindow::paintEvent(QPaintEvent *){
     //chess pieces
     int radix = CHECK_WIDTH*0.9;
     QImage black_chess,white_chess;
-    black_chess.load("../Gobang/black.png");
-    white_chess.load("../Gobang/white.png");
+    //black_chess.load("../Gobang/black.png");
+    //white_chess.load("../Gobang/white.png");
+    black_chess.load(":/images/black");
+    white_chess.load(":/images/white");
     black_chess = black_chess.scaled(radix,radix,Qt::KeepAspectRatio);
     white_chess = white_chess.scaled(radix,radix,Qt::KeepAspectRatio);
     if(1){
@@ -83,10 +409,10 @@ void MainWindow::paintEvent(QPaintEvent *){
             for(short j = 0; j < 15; j++){
                 pos_x = X-radix/2+CHECK_WIDTH*i;
                 pos_y = Y-radix/2+CHECK_WIDTH*j;
-                if(chessBoard[i][j]==1){
+                if(chessboard[i][j]==1){
                     paint.drawImage(pos_x,pos_y,black_chess);
                 }
-                else if(chessBoard[i][j]==-1){
+                else if(chessboard[i][j]==-1){
                     paint.drawImage(pos_x,pos_y,white_chess);
                 }
             }
@@ -99,23 +425,39 @@ void MainWindow::mousePressEvent(QMouseEvent *mouseEvent)
     int x = mouseEvent->x();
     int y = mouseEvent->y();
 
-    if(x>0&&x<SIZE&&y>0&&y<SIZE&&this->chessBoard[int((x-X)*1.0/CHECK_WIDTH+0.5)][int((y-Y)*1.0/CHECK_WIDTH+0.5)]==0)
+    if(x>0&&x<SIZE&&y>0&&y<SIZE&&this->chessboard[int((x-X)*1.0/CHECK_WIDTH+0.5)][int((y-Y)*1.0/CHECK_WIDTH+0.5)]==0)
     {
+
         this->chessCounts += 1;
+        if (ui->radioType->isChecked()&&(!is_win()))
+        {
 
-        //2 players
-        //this->chessBoard[int((x-X)*1.0/CHECK_WIDTH+0.5)][int((y-Y)*1.0/CHECK_WIDTH+0.5)] = (this->chessCounts%2 == 1)?1:-1;
-
-        this->chessBoard[int((x-X)*1.0/CHECK_WIDTH+0.5)][int((y-Y)*1.0/CHECK_WIDTH+0.5)] = 1;
-        this->update();
-        computer();
+            this->chessboard[int((x-X)*1.0/CHECK_WIDTH+0.5)][int((y-Y)*1.0/CHECK_WIDTH+0.5)] = 1;
+            this->chessCounts += 1;
+            this->update();
+            computer();
+        }
+        else if(ui->radioType_2->isChecked()&&(!is_win()))
+        {
+            this->chessboard[int((x-X)*1.0/CHECK_WIDTH+0.5)][int((y-Y)*1.0/CHECK_WIDTH+0.5)] = (this->chessCounts%2 == 0)?1:-1;
+            this->chessboard[int((x-X)*1.0/CHECK_WIDTH+0.5)][int((y-Y)*1.0/CHECK_WIDTH+0.5)] = (this->chessCounts%2 == 1)?1:-1;
+        }
         this->update();      //update the window
     }
+    /*
+    QString m_t = QString::number(this->max_time, 10);
+    QString s_t = QString::number(this->sum_time, 10);
+    QString a_t = QString::number(this->average_time, 10);
+    QString m_m = QString::number(this->max_memory, 10);
+    QString a_m = QString::number(this->average_memory, 10);
+    */
     if(is_win() ==1){
+        cout << "is win" << endl;
         QMessageBox::information(NULL, "Game Over", "Black Win!", QMessageBox::Yes, QMessageBox::Yes);
         this->close();
     }
     else if(is_win()==-1){
+        cout << "is not win" << endl;
         QMessageBox::information(NULL, "Game Over", "White Win!", QMessageBox::Yes, QMessageBox::Yes);
         this->close();
     }
@@ -123,6 +465,12 @@ void MainWindow::mousePressEvent(QMouseEvent *mouseEvent)
 
 int MainWindow::is_win(){
     int stat = 0;//0: not ended; 1: black win; -1: white win;
+    if (timeValuePlayer->minute() == 0 && timeValuePlayer->second() == 0)
+        return -1;
+    else if (timeValueComputer->minute() == 0 && timeValueComputer->second() == 0)
+        return 1;
+
+
     const QString black_win("11111");
     const QString white_win("00000");
     QString line;//-- or | or \ or /
@@ -134,7 +482,7 @@ int MainWindow::is_win(){
     //  left-right
     for(int i = 0;i<len;i++){
         for(int j=0;j<len;j++){
-            switch(chessBoard[j][i]){
+            switch(chessboard[j][i]){
             case 1:line[j]='1';break;
             case 0:line[j]='2';break;
             case -1:line[j]='0';break;
@@ -155,7 +503,7 @@ int MainWindow::is_win(){
     if(!left_right){
         for(int i = 0;i<len;i++){
             for(int j=0;j<len;j++){
-                switch(chessBoard[i][j]){
+                switch(chessboard[i][j]){
                 case 1:line[j]='1';break;
                 case 0:line[j]='2';break;
                 case -1:line[j]='0';break;
@@ -177,7 +525,7 @@ int MainWindow::is_win(){
     if((!left_right)||(!up_down)){
         for(int i = 4;i<len;i++){
             for(int j = 0;j<i+1;j++){
-                switch(chessBoard[len-(i-j)][j]){
+                switch(chessboard[len-(i-j)][j]){
                 case 1:line[j]='1';break;
                 case 0:line[j]='2';break;
                 case -1:line[j]='0';break;
@@ -195,7 +543,7 @@ int MainWindow::is_win(){
             }
 
             for(int j = 0;j<i+1;j++){
-                switch(chessBoard[i-j][len-j]){
+                switch(chessboard[i-j][len-j]){
                 case 1:line[j]='1';break;
                 case 0:line[j]='2';break;
                 case -1:line[j]='0';break;
@@ -218,7 +566,7 @@ int MainWindow::is_win(){
     if((!left_right)||(!up_down)||(!leftUp_rightDown)){
         for(int i = 4;i<len;i++){
             for(int j = 0;j<i+1;j++){
-                switch(chessBoard[i-j][j]){
+                switch(chessboard[i-j][j]){
                 case 1:line[j]='1';break;
                 case 0:line[j]='2';break;
                 case -1:line[j]='0';break;
@@ -236,7 +584,7 @@ int MainWindow::is_win(){
             }
 
             for(int j = 0;j<i+1;j++){
-                switch(chessBoard[len-(i-j)][len-j]){
+                switch(chessboard[len-(i-j)][len-j]){
                 case 1:line[j]='1';break;
                 case 0:line[j]='2';break;
                 case -1:line[j]='0';break;
@@ -448,8 +796,8 @@ MatchState* actionResult(const MatchState& currentState, Action action, const in
     return result;
 }
 
-int Max_Value(MatchState& current_state, int depth, int alpha, int beta);
-int Min_Value(MatchState& current_state, int depth, int alpha, int beta);
+int Max_Value(MatchState& current_state, int depth, int alpha, int beta, int max_depth);
+int Min_Value(MatchState& current_state, int depth, int alpha, int beta, int max_depth);
 
 int Terminal_test(MatchState& current_state)
 {
@@ -775,9 +1123,9 @@ int Utility(MatchState& current_state)
 }
 
 
-int Max_Value(MatchState& current_state, int depth, int alpha, int beta)
+int Max_Value(MatchState& current_state, int depth, int alpha, int beta, int max_depth)
 {
-    if (depth == 3)
+    if (depth == max_depth)
         return Utility(current_state);
     depth++;
     if (Terminal_test(current_state))
@@ -790,7 +1138,7 @@ int Max_Value(MatchState& current_state, int depth, int alpha, int beta)
     for (int i = 0; i < number; i++)
     {
         MatchState * a = actionResult(current_state, actions[i], 1);
-        int min_value = Min_Value(*a, depth, alpha, beta);
+        int min_value = Min_Value(*a, depth, alpha, beta, max_depth);
         if (min_value > v)
             v = min_value;
         if (v >= beta)
@@ -802,9 +1150,9 @@ int Max_Value(MatchState& current_state, int depth, int alpha, int beta)
 }
 
 
-int Min_Value(MatchState& current_state, int depth, int alpha, int beta)
+int Min_Value(MatchState& current_state, int depth, int alpha, int beta, int max_depth)
 {
-    if (depth == 3)
+    if (depth == max_depth)
         return Utility(current_state);
     depth++;
     if (Terminal_test(current_state))
@@ -817,7 +1165,7 @@ int Min_Value(MatchState& current_state, int depth, int alpha, int beta)
     for (int i = 0; i < number; i++)
     {
         MatchState * a = actionResult(current_state, actions[i], -1);
-        int max_value = Max_Value(*a, depth, alpha, beta);
+        int max_value = Max_Value(*a, depth, alpha, beta, max_depth);
         if (max_value < v)
             v = max_value;
         if (v <= alpha)
@@ -960,17 +1308,7 @@ int guarantee(const MatchState& current_state, int& r, int& c)
             //如果发现有冲四的现象，那么就必须拦截
             if (cnt1 == 4 && (zero1 && zero2))
             {
-                if (current_state.state[i][j] == 1)
-                    priority = 10;
-                else
-                    priority = 5;
-                r = row1;
-                c = col1;
-            }
-            //虽然没有冲四，但是也不能够置之不理的情境
-            else if (cnt1 == 4 && (zero1 || zero2))
-            {
-                if (zero1 == 1)
+                if (priority <= 5)
                 {
                     if (current_state.state[i][j] == 1)
                         priority = 10;
@@ -979,50 +1317,84 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     r = row1;
                     c = col1;
                 }
+            }
+            //虽然没有冲四，但是也不能够置之不理的情境
+            else if (cnt1 == 4 && (zero1 || zero2))
+            {
+                if (zero1 == 1)
+                {
+                    if (priority <= 5)
+                    {
+                        if (current_state.state[i][j] == 1)
+                            priority = 10;
+                        else
+                            priority = 5;
+                        r = row1;
+                        c = col1;
+                    }
+                }
                 else
                 {
-                    if (current_state.state[i][j] == 1)
-                        priority = 10;
-                    else
-                        priority = 5;
-                    r = row2;
-                    c = col2;
+                    if (priority <= 5)
+                    {
+                        if (current_state.state[i][j] == 1)
+                            priority = 10;
+                        else
+                            priority = 5;
+                        r = row2;
+                        c = col2;
+                    }
                 }
             }
             //出现双三的情况
             else if (cnt1 == 3 && (zero1 && zero2))
             {
-                r = row1;
-                c = col1;
-                //如果是自己的双三情况出现，应该首先攻占，优先度高一点
-                if (current_state.state[i][j] == 1)
-                    priority = 4;
-                else
-                    priority = 3;
+                if (priority <= 3)
+                {
+                    r = row1;
+                    c = col1;
+                    //如果是自己的双三情况出现，应该首先攻占，优先度高一点
+                    if (current_state.state[i][j] == 1)
+                        priority = 4;
+                    else
+                        priority = 3;
+                }
             }
             else if (cnt2 == 4)
             {
-                r = row3;
-                c = col3;
-                priority = 10;
+                if (priority <= 10)
+                {
+                    r = row3;
+                    c = col3;
+                    priority = 10;
+                }
             }
             else if (cnt2 == 3 && (zero3 && zero4))
             {
-                r = row3;
-                c = col3;
-                priority = 4;
+                if (priority <= 4)
+                {
+                    r = row3;
+                    c = col3;
+                    priority = 4;
+                }
             }
             else if (cnt3 == 4)
             {
-                r = row4;
-                c = col4;
-                priority = 5;
+                if (priority <= 5)
+                {
+                    r = row4;
+                    c = col4;
+                    priority = 5;
+                }
             }
             else if (cnt3 == 3 && (zero5 && zero6))
             {
-                r = row4;
-                c = col4;
-                priority = 4;
+                if (priority <= 4)
+                {
+                    r = row4;
+                    c = col4;
+                    priority = 4;
+                }
             }
 
 
@@ -1128,7 +1500,7 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     break;
                 }
             }
-            for (int k = i + 1; k <= 15; k++)
+            for (int k = i + 1; k < 15; k++)
             {
                 if (current_state.state[k][j] != current_state.state[i][j] && current_state.state[i][j] != 0)
                 {
@@ -1146,17 +1518,7 @@ int guarantee(const MatchState& current_state, int& r, int& c)
             //如果发现有冲四的现象，那么就必须拦截
             if (cnt1 == 4 && (zero1 && zero2))
             {
-                if (current_state.state[i][j] == 1)
-                    priority = 10;
-                else
-                    priority = 5;
-                r = row1;
-                c = col1;
-            }
-            //虽然没有冲四，但是也不能够置之不理的情境
-            else if (cnt1 == 4 && (zero1 || zero2))
-            {
-                if (zero1 == 1)
+                if (priority <= 5)
                 {
                     if (current_state.state[i][j] == 1)
                         priority = 10;
@@ -1165,50 +1527,81 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     r = row1;
                     c = col1;
                 }
-                else
+            }
+            //虽然没有冲四，但是也不能够置之不理的情境
+            else if (cnt1 == 4 && (zero1 || zero2))
+            {
+                if (priority <= 5)
                 {
-                    if (current_state.state[i][j] == 1)
-                        priority = 10;
+                    if (zero1 == 1)
+                    {
+                        if (current_state.state[i][j] == 1)
+                            priority = 10;
+                        else
+                            priority = 5;
+                        r = row1;
+                        c = col1;
+                    }
                     else
-                        priority = 5;
-                    r = row2;
-                    c = col2;
+                    {
+                        if (current_state.state[i][j] == 1)
+                            priority = 10;
+                        else
+                            priority = 5;
+                        r = row2;
+                        c = col2;
+                    }
                 }
             }
             //出现双三的情况
             else if (cnt1 == 3 && (zero1 && zero2))
             {
-                r = row1;
-                c = col1;
-                //如果是自己的双三情况出现，应该首先攻占，优先度高一点
-                if (current_state.state[i][j] == 1)
-                    priority = 4;
-                else
-                    priority = 3;
+                if (priority <= 3)
+                {
+                    //如果是自己的双三情况出现，应该首先攻占，优先度高一点
+                    if (current_state.state[i][j] == 1)
+                        priority = 4;
+                    else
+                        priority = 3;
+                    r = row1;
+                    c = col1;
+                }
             }
             else if (cnt2 == 4)
             {
-                r = row3;
-                c = col3;
-                priority = 10;
+                if (priority <= 10)
+                {
+                    r = row3;
+                    c = col3;
+                    priority = 10;
+                }
             }
             else if (cnt2 == 3 && (zero3 && zero4))
             {
-                r = row3;
-                c = col3;
-                priority = 4;
+                if (priority <= 4)
+                {
+                    r = row3;
+                    c = col3;
+                    priority = 4;
+                }
             }
             else if (cnt3 == 4)
             {
-                r = row4;
-                c = col4;
-                priority = 5;
+                if (priority <= 5)
+                {
+                    r = row4;
+                    c = col4;
+                    priority = 5;
+                }
             }
             else if (cnt3 == 3 && (zero5 && zero6))
             {
-                r = row4;
-                c = col4;
-                priority = 4;
+                if (priority <= 4)
+                {
+                    r = row4;
+                    c = col4;
+                    priority = 4;
+                }
             }
 
             //对角线方向检测
@@ -1357,17 +1750,7 @@ int guarantee(const MatchState& current_state, int& r, int& c)
             //如果发现有冲四的现象，那么就必须拦截
             if (cnt1 == 4 && (zero1 && zero2))
             {
-                if (current_state.state[i][j] == 1)
-                    priority = 10;
-                else
-                    priority = 5;
-                r = row1;
-                c = col1;
-            }
-            //虽然没有冲四，但是也不能够置之不理的情境
-            else if (cnt1 == 4 && (zero1 || zero2))
-            {
-                if (zero1 == 1)
+                if (priority <= 5)
                 {
                     if (current_state.state[i][j] == 1)
                         priority = 10;
@@ -1376,50 +1759,81 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     r = row1;
                     c = col1;
                 }
-                else
+            }
+            //虽然没有冲四，但是也不能够置之不理的情境
+            else if (cnt1 == 4 && (zero1 || zero2))
+            {
+                if (priority <= 5)
                 {
-                    if (current_state.state[i][j] == 1)
-                        priority = 10;
+                    if (zero1 == 1)
+                    {
+                        if (current_state.state[i][j] == 1)
+                            priority = 10;
+                        else
+                            priority = 5;
+                        r = row1;
+                        c = col1;
+                    }
                     else
-                        priority = 5;
-                    r = row2;
-                    c = col2;
+                    {
+                        if (current_state.state[i][j] == 1)
+                            priority = 10;
+                        else
+                            priority = 5;
+                        r = row2;
+                        c = col2;
+                    }
                 }
             }
             //出现双三的情况
             else if (cnt1 == 3 && (zero1 && zero2))
             {
-                r = row1;
-                c = col1;
-                //如果是自己的双三情况出现，应该首先攻占，优先度高一点
-                if (current_state.state[i][j] == 1)
-                    priority = 4;
-                else
-                    priority = 3;
+                if (priority <= 3)
+                {
+                    //如果是自己的双三情况出现，应该首先攻占，优先度高一点
+                    if (current_state.state[i][j] == 1)
+                        priority = 4;
+                    else
+                        priority = 3;
+                    r = row1;
+                    c = col1;
+                }
             }
             else if (cnt2 == 4)
             {
-                r = row3;
-                c = col3;
-                priority = 10;
+                if (priority <= 10)
+                {
+                    r = row3;
+                    c = col3;
+                    priority = 10;
+                }
             }
             else if (cnt2 == 3 && (zero3 && zero4))
             {
-                r = row3;
-                c = col3;
-                priority = 4;
+                if (priority <= 4)
+                {
+                    r = row3;
+                    c = col3;
+                    priority = 4;
+                }
             }
             else if (cnt3 == 4)
             {
-                r = row4;
-                c = col4;
-                priority = 5;
+                if (priority <= 5)
+                {
+                    r = row4;
+                    c = col4;
+                    priority = 5;
+                }
             }
             else if (cnt3 == 3 && (zero5 && zero6))
             {
-                r = row4;
-                c = col4;
-                priority = 4;
+                if (priority <= 4)
+                {
+                    r = row4;
+                    c = col4;
+                    priority = 4;
+                }
             }
 
             cnt1 = 1;
@@ -1568,17 +1982,7 @@ int guarantee(const MatchState& current_state, int& r, int& c)
             //如果发现有冲四的现象，那么就必须拦截
             if (cnt1 == 4 && (zero1 && zero2))
             {
-                if (current_state.state[i][j] == 1)
-                    priority = 10;
-                else
-                    priority = 5;
-                r = row1;
-                c = col1;
-            }
-            //虽然没有冲四，但是也不能够置之不理的情境
-            else if (cnt1 == 4 && (zero1 || zero2))
-            {
-                if (zero1 == 1)
+                if (priority <= 5)
                 {
                     if (current_state.state[i][j] == 1)
                         priority = 10;
@@ -1587,59 +1991,93 @@ int guarantee(const MatchState& current_state, int& r, int& c)
                     r = row1;
                     c = col1;
                 }
-                else
+            }
+            //虽然没有冲四，但是也不能够置之不理的情境
+            else if (cnt1 == 4 && (zero1 || zero2))
+            {
+                if (priority <= 5)
                 {
-                    if (current_state.state[i][j] == 1)
-                        priority = 10;
+                    if (zero1 == 1)
+                    {
+                        if (current_state.state[i][j] == 1)
+                            priority = 10;
+                        else
+                            priority = 5;
+                        r = row1;
+                        c = col1;
+                    }
                     else
-                        priority = 5;
-                    r = row2;
-                    c = col2;
+                    {
+                        if (current_state.state[i][j] == 1)
+                            priority = 10;
+                        else
+                            priority = 5;
+                        r = row2;
+                        c = col2;
+                    }
                 }
             }
             //出现双三的情况
             else if (cnt1 == 3 && (zero1 && zero2))
             {
-                r = row1;
-                c = col1;
-                //如果是自己的双三情况出现，应该首先攻占，优先度高一点
-                if (current_state.state[i][j] == 1)
-                    priority = 4;
-                else
-                    priority = 3;
+                if (priority <= 3)
+                {
+                    //如果是自己的双三情况出现，应该首先攻占，优先度高一点
+                    if (current_state.state[i][j] == 1)
+                        priority = 4;
+                    else
+                        priority = 3;
+                    r = row1;
+                    c = col1;
+                }
             }
             else if (cnt2 == 4)
             {
-                r = row3;
-                c = col3;
-                priority = 10;
+                if (priority <= 10)
+                {
+                    r = row3;
+                    c = col3;
+                    priority = 10;
+                }
             }
             else if (cnt2 == 3 && (zero3 && zero4))
             {
-                r = row3;
-                c = col3;
-                priority = 4;
+                if (priority <= 4)
+                {
+                    r = row3;
+                    c = col3;
+                    priority = 4;
+                }
             }
             else if (cnt3 == 4)
             {
-                r = row4;
-                c = col4;
-                priority = 5;
+                if (priority <= 5)
+                {
+                    r = row4;
+                    c = col4;
+                    priority = 5;
+                    cout << r << endl;
+                    cout << c << endl;
+                }
             }
             else if (cnt3 == 3 && (zero5 && zero6))
             {
-                r = row4;
-                c = col4;
-                priority = 4;
+                if (priority <= 4)
+                {
+                    r = row4;
+                    c = col4;
+                    priority = 4;
+                }
             }
         }
     }
+
     if (priority != 0)
         return priority;
     return 0;
 }
 
-void miniMaxSearchForFive(const MatchState& currentState, int& r, int& c)
+int miniMaxSearchForFive(const MatchState& currentState, int& r, int& c, int max_depth)
 {
     QVector<Action> actions;
     QVector<double> values;
@@ -1647,14 +2085,14 @@ void miniMaxSearchForFive(const MatchState& currentState, int& r, int& c)
     //首先应该先检验一下是否出现了危险的境地，也就是失误之后必输的情景
     t = guarantee(currentState, r, c);
     if (t != 0)
-        return;
+        return 0;
     getAvailableAction(currentState, actions);
-    int depth = 0;
     //在这里需要我们限制极大极小的深度搜索
+    int depth = 0;
     //为了能够减少搜索的时间复杂度，在这里采用alpha beta剪枝策略
     for (int i = 0; i < (int)actions.size(); ++i)
     {
-        values.push_back(Min_Value(*actionResult(currentState, actions[i], 1), depth, -10000, 10000));
+        values.push_back(Min_Value(*actionResult(currentState, actions[i], 1), depth, -10000, 10000, max_depth));
     }
     int max_idx = 0;
     double max_val = values[max_idx];
@@ -1668,17 +2106,44 @@ void miniMaxSearchForFive(const MatchState& currentState, int& r, int& c)
     }
     r = actions[max_idx].row;
     c = actions[max_idx].col;
+    return 1;
 }
 
 void MainWindow::computer(){
     int r,c;
+    //clock_t clockBegin, clockEnd; //分别记录搜索前后的时间
+    //DWORD dwValue1,dwValue2;//分别记录搜索前后可用内存
     MatchState currentState;
+    //MEMORYSTATUS mem;
+    int strategy;//strategy 用来判断miniMaxSearchForFive采取的是搜索策略（1）还是防御策略（0）
     for (int i = 0; i < 15 * 15; ++i)
     {
-        currentState.state[i / 15][i % 15] = chessBoard[i/15][i%15];
+        currentState.state[i / 15][i % 15] = chessboard[i/15][i%15];
     }
-    miniMaxSearchForFive(currentState,r,c);
-    this->chessBoard[r][c] = -1;
+    //GlobalMemoryStatus(&mem);
+    //dwValue1 = mem.dwAvailPhys / mb;
+    //clockBegin = clock();
+    //max_depth代表的是游戏的难度，1为简单，2为中等，3为困难
+    strategy = miniMaxSearchForFive(currentState,r,c, max_depth);
+    //GlobalMemoryStatus(&mem);
+    //dwValue2 = mem.dwAvailPhys / mb;
+    //clockEnd = clock();
+    /*
+    if(strategy){   //只有在搜索策略下才记录相应的内存和时间消耗
+        this->count = this->count +1;
+        if(this->max_memory<(dwValue1-dwValue2)){
+            this->max_memory = dwValue1-dwValue2;
+        }
+        if(this->max_time<(clockEnd-clockBegin)){
+            this->max_time = clockEnd - clockBegin;
+        }
+        this->sum_memory = this->sum_memory + dwValue1-dwValue2;
+        this-> average_memory = this-> sum_memory / this->count;
+        this->sum_time = this->sum_time + clockEnd-clockBegin;
+        this->average_time = this->sum_time / this->count;
+    }
+    */
+    this->chessboard[r][c] = -1;
 }
 
 

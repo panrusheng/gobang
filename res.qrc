@@ -3,4 +3,11 @@
         <file alias="black">black.png</file>
         <file alias="white">white.png</file>
     </qresource>
+    <qresource prefix="/icon">
+        <file>undo.png</file>
+        <file>save.png</file>
+        <file>print.png</file>
+        <file>new.png</file>
+        <file>open.png</file>
+    </qresource>
 </RCC>

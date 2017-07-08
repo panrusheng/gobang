@@ -5,7 +5,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     MainWindow w;
-    w.setWindowTitle("BetaGo");
+    //w.setWindowTitle("BetaGo");
     w.show();
 
     return a.exec();
